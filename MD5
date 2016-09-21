@@ -1,0 +1,12 @@
+d3fc37c87780d870914777258fc60741 *DESCRIPTION
+3c41fa5ef2fe2fe67692c9913dbba069 *NAMESPACE
+ad603ec70ef7b2299aa09a7bbded7a1a *R/counterfactual.r
+4186f74d7085af849430d27b3daaec1e *build/vignette.rds
+b879b6da282672c4c1939edf3599de91 *data/nlsw88.rdata
+beed675aeedb302f3a53aee26cf06b4e *inst/doc/vignette.R
+b0a8bc69821185bd6d88e7acb26bb0f5 *inst/doc/vignette.Rnw
+46b7b421341a51b4f75cf090ab729e09 *inst/doc/vignette.pdf
+d07b1eace437acc2655356ef7ff5021c *man/counterfactual.Rd
+47a9c7a11660eabc9326ea9cef179e84 *man/nlsw88.Rd
+b0a8bc69821185bd6d88e7acb26bb0f5 *vignettes/vignette.Rnw
+8fa0cb648fa049b2ee4bda9f241e8b31 *vignettes/vignette.bib

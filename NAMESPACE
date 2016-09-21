@@ -1,0 +1,18 @@
+exportPattern("^[^\\.]")
+
+# Import all packages listed as Imports or Depends
+import(
+  quantreg,
+  foreach,
+  doRNG
+)
+importFrom("Hmisc", "wtd.quantile","wtd.mean")
+importFrom("survival", "coxph", "basehaz","survfit", "Surv")
+importFrom("parallel", "detectCores", "makeCluster", "stopCluster")
+importFrom("doParallel", "registerDoParallel")
+importFrom("stats", "binomial", "coef", "glm", "lm", "model.matrix",
+             "model.response", "model.weights", "na.exclude", "plogis",
+             "pnorm", "predict", "qnorm", "quantile", "resid", "rexp",
+             "var", "approxfun")
+
+export(counterfactual)

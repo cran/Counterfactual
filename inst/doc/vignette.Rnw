@@ -1,0 +1,688 @@
+%\VignetteIndexEntry{Using Animal}
+%\documentclass[letter]{article}
+\documentclass[11pt,reqno]{amsart}
+%\usepackage{Sweave}
+\usepackage[nogin]{Sweave}
+\usepackage{amsfonts}
+\usepackage{verbatim}
+\usepackage[authoryear]{natbib}
+\newcommand{\Rpackage}[1]{{\texttt{#1}}}
+\newcommand{\rt}[1]{{\texttt{#1}}}
+\newcommand{\rti}[1]{{\textit{#1}}}
+\newcommand{\R}{{\normalfont\textsf{R }}{}}
+
+\renewcommand{\baselinestretch}{1.2}
+\oddsidemargin 0pt \evensidemargin 0pt \marginparwidth 1in
+\marginparsep 0pt \topmargin 0pt \headheight 0pt \headsep 25pt
+\textheight 8.75in \textwidth 6.3in \topskip 0pt \footskip 1cm
+
+
+\title{Counterfactual Analysis in R: A Vignette}
+\thanks{Version: \today. We gratefully acknowledge research support
+from the NSF.}
+\author{ Mingli Chen \and Victor Chernozhukov \and Iv{\'a}n Fern{\'a}ndez-Val \and Blaise Melly}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+
+\SweaveOpts{engine=R}
+
+
+\maketitle
+
+\begin{abstract}
+The \R package \Rpackage{Counterfactual} implements the estimation and inference methods of \cite{ChernozhukovFernandez-ValMelly2013} for counterfactual analysis. The counterfactual  distributions considered are the result of changing either the marginal distribution of covariates related to the outcome variable of interest, or the conditional distribution of the outcome given the covariates. They can be applied to estimate quantile treatment effects and wage decompositions. This vignette serves as an introduction to the package and displays basic functionality of the commands contained within. 
+\end{abstract}
+
+\section{Introduction \label{sec:Introduction}} 
+Using econometric terminology, we can often think of a counterfactual distribution as the result  of a change in either the distribution of a set of covariates $X$ that determine the outcome variable of interest $Y$, or the relationship of the covariates with the outcomes, that is, a change in the conditional distribution of $Y$ given $X$. Counterfactual analysis consists of evaluating the effects of such changes.  The \R package \Rpackage{Counterfactual} implements the methods of \cite{ChernozhukovFernandez-ValMelly2013} for counterfactual analysis. It contains commands to estimate and make  inference on quantile effects constructed from counterfactual distributions. The counterfactual distributions are estimated using regression methods such as classical, duration, quantile and distribution regressions.  The inference on the quantile effect function can be pointwise at a specific quantile index or uniform  over a range of specified quantile indexes.  
+%The main goal is to make uniform inference on the functionals over a range of specified points such as the quantile effect function over a range of quantile indexes. 
+%the distribution of covariates related to the outcome, under the assumption that the conditional distribution of the outcome is unaltered.%
+%\footnote{%
+%The estimation of the conditional model is often of independent economic interest. High-level conditions for the main estimators of the conditional distribution function -- use %quantile and/or distribution regression methods -- under suitable primitive conditions can be found in \cite{ChernozhukovFernandez-ValMelly2013}.
+%} 
+%It also provides uniformly consistent estimates for the counterfactual distribution of the outcome and for functionals of this distribution. 
+%\cite{ChernozhukovFernandez-ValMelly2013} derived statistical theory of regression based methods for counterfactual analysis. 
+%This vignette describes how to use the function \rt{counterfactual} to implement these methods.  
+
+\medskip
+
+We start by giving a simple example of counterfatual analysis. Suppose we would like to analyze the wage differences between men and women. Let $0$ denote the population of men and let $1$ denote the population of women. The variable $Y_{j}$ denotes wages and $X_{j}$ denotes job market-relevant characteristics that affect wages for populations $j=0$ and $j=1$. The conditional distribution functions $F_{Y_0|X_0}(y|x)$ and $F_{Y_1|X_1}(y|x)$ describe the stochastic assignment of wages to workers with characteristics $x$, for men and women, respectively. Let $F_{Y\left\langle 0|0\right\rangle }$ and $F_{Y\left\langle 1|1\right\rangle }$ represent the observed distribution function of wages for men and women, and let $F_{Y\left\langle 0|1\right\rangle }$ represent the distribution function of wages that would have prevailed for women had they faced the men's wage schedule $F_{Y_0|X_0}$:
+\[
+F_{Y\left\langle 0|1\right\rangle }(y):=\int_{\mathcal{X}_{1}}F_{Y_{0}|X_{0}}(y|x)dF_{X_{1}}(x).\label{eq:DefCounter}
+\]
+The latter distribution is called counterfactual, since it does not arise as a distribution from any observable population. Rather, this distribution is constructed by integrating the conditional distribution of wages for men with respect to the distribution of characteristics for women. This quantity is well defined if $\mathcal{X}_0$, the support of men's characteristics, includes $\mathcal{X}_1$, the support of women's characteristics, namely $\mathcal{X}_1\subset \mathcal{X}_0$. 
+
+%So we need to model and estimate the conditional distributions $F_{Y_{0}|X_{0}}$ and covariate distributions $F_{X_1}$. As leading approaches for modeling and estimating $F_{Y_{0}|X_{0}}$, we use semiparametric quantile and distribution regression metods.  
+
+\medskip
+
+Let $F^{\leftarrow}$ denote the quantile or left-inverse function of the distribution function $F$.  The difference in the observed wage quantile function between men and women can be decomposed in the spirit of  \cite{Oaxaca1973} and \cite{Blinder1973} as
+\begin{equation}
+F^{\leftarrow}_{Y\left\langle 1|1\right\rangle }-F^{\leftarrow}_{Y\left\langle 0|0\right\rangle}=[F^{\leftarrow}_{Y\left\langle 1|1\right\rangle}-F^{\leftarrow}_{Y\left\langle 0|1\right\rangle}]+[F^{\leftarrow}_{Y\left\langle 0|1\right\rangle }-F^{\leftarrow}_{Y\left\langle 0|0\right\rangle }], \label{eq:decomp}
+\end{equation}
+where the first term in brackets is due to differences in the wage structure and the second term is a composition effect due to differences in characteristics.  These counterfactual effects are well defined econometric parameters and are widely used in empirical analysis, for example, the first term of the decomposition is a measure of gender wage discrimination. In Section \ref{sec:examples} we consider an empirical example where $0$ denotes the population of nonunion workers and $1$ denotes the population of union workers. In this case the the wage structure effect corresponds to the treatment effect of union or union premium. It is important to note that these effects do not necessarily have a causal interpretation without additional conditions that are spelled out in \cite{ChernozhukovFernandez-ValMelly2013}. 
+
+
+%The counterfactual effects of changing the covariate distribution, $F_{Y<j|k>(y)}-F_{Y<j|m>(y)}$, also has a causal interpretation as the policy effect of changing exogeneous the covariate distribution from $F_{X_{m}}$ to $F_{X_{k}}$, under the assumption that the policy does not affect the conditional distribution.
+
+\section{The Counterfactual Package}
+\subsection{Getting Started}
+To get started using the package \Rpackage{Counterfactual} for the first time, issue the command
+<<results=hide, eval=false>>=
+install.packages("Counterfactual")
+@
+into your \R browser to install the package in your computer. Once the package has been installed,
+you can use the package \Rpackage{Counterfactual} during any \R session by simply issuing the command
+<<results=hide>>=
+library(Counterfactual)
+@
+Now you are ready to use the function \rt{counterfactual} and data sets contained in \Rpackage{Counterfactual}. For general questions about the package you may type
+<<eval=false>>=
+help(package = "Counterfactual")
+@
+to view the package help file, or for more questions about a specific function you can type \texttt{help(\textit{function-name})}. For example, try:
+<<eval=false>>=
+help(counterfactual)
+@
+or simply type
+<<eval=false>>=
+?counterfactual
+@
+
+The command \rt{counterfactual}  has the general syntax: 
+
+<<eval=false>>=
+counterfactual(formula, data, weights, na.action = na.exclude, 
+               group, treatment = FALSE, decomposition = FALSE,
+               transformation = FALSE, counterfactual_var, 
+               quantiles, method = "qr", 
+               trimming = 0.005, nreg = 100, scale_variable, 
+               counterfactual_scale_variable, 
+               censoring = 0, right = FALSE, nsteps = 3, 
+               firstc = 0.1, secondc = 0.05, noboot = FALSE, 
+               weightedboot = FALSE, seed = 8, robust = FALSE, 
+               reps = 100, alpha = 0.05, first = 0.1, 
+               last = 0.9, cons_test = 0, printdeco = TRUE, 
+               sepcore = FALSE, ncore=1)
+@
+
+To describe the different options of the command we need to provide some background on methods for counterfactual analysis. 
+
+\subsection{Setting for Counterfactual Analysis}
+Consider a  general setting with two populations labeled
+by $k\in \mathcal{K} = \{0,1\}$. For each population $k$ there is the $%
+d_{x}$-vector $X_{k}$ of covariates and the scalar outcome $Y_{k}$.
+The covariate vector is observable in all populations, but the outcome is
+only observable in populations $j\in \mathcal{J}\subseteq \mathcal{K}$.
+Let $F_{X_{k}}$ denote the covariate distribution in population $k\in \mathcal{K},$ and  $%
+F_{Y_{j}|X_{j}}$ and $Q_{Y_{j}|X_{j}}$ denote the conditional distribution and quantile functions in population $j\in \mathcal{J}$.
+ We denote the support of $X_{k}$ by $%
+\mathcal{X}_{k}\subseteq \mathbb{R}^{d_{x}}$, and the region of interest for $%
+Y_{j}$ by $\mathcal{Y}_{j}\subseteq \mathbb{R}$. The refer to $j$ as the reference population(s) and to $k$ as the counterfactual population(s).
+% We assume for simplicity that the number of
+% populations, $|\mathcal{K}|$, is finite. Further, define $\mathcal{Y}_{j}%
+% \mathcal{X}_{j}=\{(y,x):y\in \mathcal{Y}_{j},x\in \mathcal{X}_{j}\}$, $%
+% \mathcal{Y}\mathcal{X}\mathcal{J}=\{(y,x,j):(y,x)\in \mathcal{Y}_{j}\mathcal{%
+% X}_{j},j\in \mathcal{J}\},$ and generate other index sets by taking
+% Cartesian products, e.g., $\mathcal{J}\mathcal{K}=\{(j,k):j\in \mathcal{J}%
+% ,k\in \mathcal{K}\}$.
+
+\medskip
+
+The reference and counterfactual populations in the wage examples correspond to different groups such as men and women or nonunion and union workers. We can also generate counterfactual populations by artificially transforming a reference population. Formally, we can think of $X_k$ as being created through a known transformation of $X_j$:
+\begin{equation}
+X_{k}=g_{k}(X_{j}),\quad\mathrm{where}\quad g_{k}:\mathcal{X}_{j}\rightarrow\mathcal{X}_{k}.\label{eq:transform}
+\end{equation}
+This case covers adding one unit to the first covariate, $X_{1,k}=X_{1,j}+1$, holding the rest of the covariates constant. The resulting quantile effect becomes the \textit{unconditional} quantile regression, which measures the effect of a unit change in a given covariate component on the unconditional quantiles of $Y$. For example, this type of counterfactual is useful for estimating the treatment effect of smoking during pregnancy on infant birth weights. Another possible transformation is a mean preserving redistribution of the first covariate implemented as $X_{1,k} = (1-\alpha) E[X_{1,j}] + \alpha X_{1,j}$. These and more general types of transformation defined in (\ref{eq:transform}) are useful for estimating the effect of a change in taxation on the marginal distribution of food expenditure or the effect of cleaning up a local hazardous waste site on the marginal distribution of housing prices (\cite{Stock1991}).  We give an example of this type of transformation in Section \ref{Sec:example2}. 
+
+\medskip
+
+The reference and counterfactual populations can be specified to \rt{counterfactual} in two ways that accomodate the previous two cases:
+\begin{enumerate}
+\item If the option \rt{group} has been specified, then $j$ is the population defined by \rt{group=0} and $k$ is the population defined by \rt{group=1}. This means that both $X$ and $Y$ are observed in \rt{group=0}, but only $X$ needs to be observed in \rt{group=1}. When both $X$ and $Y$ are observed in \rt{group=1}, the option \rt{treatment=TRUE} specifies that the structure or treatment effect should be computed, whereas the dafault option \rt{treatment=FALSE} specifies that the composition effect should be computed; see the definition of the structure and composition effects in the decomposition (\ref{eq:decomp}). If in addition to  \rt{treatment=TRUE} the option \rt{decomposition=TRUE} is selected, then the entire decompostion (\ref{eq:decomp}) is reported including the composition, structure and total effects. Note that we can reverse the roles of the populations defined by an indicator variable \rt{vargroup} by setting either \rt{group=vargroup} or \rt{group=1-vargroup}.
+
+
+\item Alternatively, the option \rt{counterfactual\_var} can be used to specify the covariates in the counterfactual population. In this case, the names on the right handside of \rt{formula} contain the variables in $X_j$ and \rt{counterfactual\_var} contains the variables in $X_k$. The option \rt{transformation=TRUE} should be used when $X_k$ is generated as a transformation of $X_j$, e.g., equation (\ref{eq:transform}). The list passed to \rt{counterfactual\_var} must contain exactly the same number of variables as the list of independent variables in \rt{formula} and  the order of the variables in the list matters.
+\end{enumerate}
+
+Counterfactual distribution and quantile functions are formed by combining the conditional distribution in the population $j$
+with the covariate distribution in the population $k$, namely: 
+\begin{eqnarray*}
+& F_{Y{\langle j|k\rangle }}(y):=\int_{\mathcal{X}%
+_{k}}F_{Y_{j}|X_{j}}(y|x)dF_{X_{k}}(x),\ \ y\in \mathcal{Y}_{j},
+\label{define: counter} \\
+& Q_{Y{\langle j|k\rangle }}(\tau ):=F_{Y{\langle j|k\rangle }}^{\leftarrow
+}(\tau ),\ \ \tau \in (0,1),
+\end{eqnarray*}%
+where $(j,k) \in \mathcal{J}\mathcal{K}$, and $F_{Y{\langle j|k\rangle }}^{\leftarrow }(\tau) = \inf \{y \in \mathcal{Y}_{j}: F_{Y{\langle j|k\rangle }}(y) \geq \tau \} $ is the left-inverse
+function of $F_{Y{\langle j|k\rangle }}$.  The main interest lies in the quantile effect (QE) function, defined as the difference of two counterfactual quantile  
+functions over a set of quantile indexes $\mathcal{T} \subset (0,1)$: 
+\[
+\Delta(\tau) =  Q_{Y{\langle j|k\rangle }}(\tau ) - Q_{Y{\langle j|j \rangle }}(\tau ), \ \tau \in \mathcal{T},  
+\]
+where $j \in \mathcal{J}$ and $k \in \mathcal{K}$. In the example of Section \ref{sec:Introduction}, we obtain the composition effect with $j=0$ and $k=1$. When $Y_k$ is observed, then we can construct the structure effect or treatment effect on the treated
+\[
+\Delta(\tau) =  Q_{Y{\langle k|k \rangle }}(\tau ) - Q_{Y{\langle j|k \rangle }}(\tau ), \ \tau \in \mathcal{T},  
+\]
+by specifying the option \rt{group} and setting \rt{treatment=TRUE}. In the example of Section \ref{sec:Introduction}, we obtain the wage structure effect with $j=0$ and $k=1$, i.e. setting \rt{group=1} and \rt{treatment=TRUE}. If in addition we select the option \rt{decomposition=TRUE}, then we obtain the entire decomposition (\ref{eq:decomp}) including the composition, structure and total effects. The total effect is
+\[
+\Delta(\tau) =  Q_{Y{\langle k|k \rangle }}(\tau ) - Q_{Y{\langle j|j \rangle }}(\tau ), \ \tau \in \mathcal{T}.  
+\]
+%, and minus the wage structure effect with $j=1$ and $k=0$.
+%Below we will show two leading examples, using quantile regression and distribution regression respectively (and two different methods of generating the counterfactual samples). %Before preceed, let us investigate some of the functionality of the function within \R. The default call to \rt{counterfactual} is
+The set $\mathcal{T}$ is specified with the option \rt{quantiles}, which enumerates the quantile indexes of interested and should be a vector containing numbers between 0 and 1.  
+
+
+
+To estimate the QE function we need to model and estimate the conditional distribution $F_{Y_{j}|X_{j}}$ and covariate distribution $F_{X_k}$. %As leading approaches for modeling and estimating $F_{Y_{0}|X_{0}}$, we use semiparametric quantile and distribution regression methods.%
+We estimate  the covariate distribution using the empirical distribution, and  consider several regression based methods for the conditional distribution including classical, quantile, duration, and distribution regression.  Given the estimators of the conditional and covariate distributions $\hat{F}_{Y_{j}\vert X_{j}}$ and $\hat{F}_{X_{k}}$, the estimator of each counterfactual distribution is obtained 
+by the
+plug-in rule, namely $$\hat{F}_{Y\left\langle j|k\right\rangle}(y)=\int_{\mathcal{X}_{k}}\hat{F}_{Y_{j}\vert X_{j}}(y\vert x)d\hat{F}_{X_{k}}(x),
+ y\in\mathcal{Y}_{j}.$$ 
+Then, the estimator of the QE function is also obtained by the plug-in rule as
+$$\hat \Delta(\tau) =  \hat{F}_{Y\left\langle j|k\right\rangle}^{\leftarrow}(\tau) - \hat{F}_{Y\left\langle j|j\right\rangle}^{\leftarrow}(\tau), \ \ \tau \in \mathcal{T},$$
+or
+$$\hat \Delta(\tau) =  \hat{F}_{Y\left\langle k|k\right\rangle}^{\leftarrow}(\tau) - \hat{F}_{Y\left\langle j|k\right\rangle}^{\leftarrow}(\tau), \ \ \tau \in \mathcal{T},$$
+if we define the counterfactual population with \rt{group} and set \rt{treatment=TRUE}. If in addition to \rt{treatment=TRUE}, we select \rt{decomposition=TRUE}, then the plug-in  estimator of the total effect is
+\[
+\hat \Delta(\tau) =  \hat{F}_{Y\left\langle k|k\right\rangle}^{\leftarrow}(\tau) - \hat{F}_{Y\left\langle j|j\right\rangle}^{\leftarrow}(\tau), \ \ \tau \in \mathcal{T}.  
+\]
+%where $\hat{F}_{Y\left\langle j|k\right\rangle}^{r}$ denotes the monotone rearrangement
+%of $\hat{F}_{Y\left\langle j|k\right\rangle}$ 
+%(see \cite{Chernozhukov2009a}).   
+
+
+
+
+\subsubsection{Estimation of Conditional Distribution}
+%We compare quantile and distribution regression as competing models for the conditional distribution of wages and discuss the different choices that must be made in practice. 
+
+% A common approach to model conditional distributions is through the \cite{Cox1972} transformation model 
+% $F_{Y|X}(y|x) = 1- exp(-exp(t(y)-x'\beta))$, where $t(\cdot)$ is an unknown monotonic transformation. This conditional distribution corresponds to the location-shift representation $t(Y) = X'\beta+V$, where $V$ has an extreme value distribution and is independent of $X$. In this model, covariates impact an unknown monotone transformation of the outcome only through the location. The role of covariates is, therefore, limited in an important way. Note, however, that since $t(\cdot)$ is unknown, this model is not a special case of quantile regression.  
+% 
+% Instead of restricting attention to the transformation model for the conditional distribution, we can model $F_{Y|X}(y|x)$ separately at each threshold $y\in \mathcal{Y}$, i.e., the distribution regression model 
+% \begin{equation}
+% F_{Y|X}(y|x)=\Lambda(P(x)'\beta(y))\ \mathrm{for}\ \mathrm{all}\ y\in\mathcal{Y},\label{eq:DR}
+% \end{equation}
+% where $\Lambda$ is a known link function and $\beta(\cdot)$ is an unknown function-valued parameter. This specification includes the  \cite{Cox1972} model as a strict special case, but allows for a much more flexible effect of the covariates.% 
+% \footnote{%
+% To see the inclusion, we set the link function to be the complementary log-log link, $\Lambda(v) = 1 - exp(-exp(v))$, take $P(x)$ to include a constant as the first compoment, and let $P(x)'\beta(y) = t(y) - P(x)'\beta$, so that only the first compoment of $\beta(y)$ varies with the threshold $y$.}
+% To see the greater flexibility of (\ref{eq:DR}), we note that (\ref{eq:DR}) allows all components of $\beta(y)$ to vary with $y$. We also note that the distribution regression model is \textit{flexible} in the sense that, for any given link function $\Lambda$, we can approximate the conditional distribution function $F_{Y|X}(y|x)$ arbitrarily well by using a rich enough $P(X)$. Thus, the choice of the link function is not important for sufficiently rich $P(X)$.
+
+In this section we assume that we have samples $\{(Y_{ji}, X_{ji}): i = 1, \ldots, n_j \}$ composed of independent and identically distributed copies of $(Y_j,X_j)$ for all populations $j \in \mathcal{J}$.
+The conditional distribution $F_{Y_j|X_j}$ can be modeled and estimated directly, or throught the conditional quantile function, $Q_{Y_j|X_j}$, using the relation
+\begin{equation}
+F_{Y_{j}|X_{j}}(y|x)\equiv\int_{(0,1)}1\{Q_{Y_{j}|X_{j}}(u|x)\leq y\}du.\label{eq:QEDEtran}
+\end{equation}
+% Thus, we can proceed by modeling and estimating either of these conditional functions. There are several principal approaches to carry out these tasks. Focusing on quantile effects (QEs) as the leading functionals of interest, we can have the following case of counterfactual effects, \footnote{Under an assumption called conditional exogeneity, selection on observables or unconfoundedness counterfactual effects can be interpreted as causal effects, see \cite{ChernozhukovFernandez-ValMelly2013}.} i.e., the QE of changing the covariate distribution: \[ Q_{Y\left\langle 1|1\right\rangle}(\tau) - Q_{Y\left\langle 1|0\right\rangle}(\tau). \]
+% 
+% This covers linear location-shift, linear location-scale, quantile regression, and censored quantile regression models.  
+% 
+% Classical regression is one of the principal approaches to modeling and estimating conditional quantiles. The classical location-shift model takes the linear-in-parameters form $Y=P(X)'\beta+V$, $V=Q_{V}(U)$, where $U \sim U(0,1)$ is independent of $X$, $P(X)$ is a vector of transformations of $X$ such as polynomials or B-splines, and $P(X)'\beta$ is a location function such as the conditional mean. The additive disturbance $V$ has unknown distribution and quantile functions $F_V$ and $Q_V$. The conditional quantile function of $Y$ given $X$ is $Q_{Y|X}(u|x) = P(X)'\beta + Q_V(u)$ and the corresponding conditional distribution is $F_{Y|X}(y|x) = F_{V}(y - P(X)'\beta)$. This model, used in  \cite{JuhnMurphyPierce1993}, is parsimonioius but restrictive, since no matter how flexible $P(X)$ is, the covariates impact the outcome only through the location. In applications, this model, as well as its location-scale generalizations, is often rejected, so we cannot recommend its use without appropriate specification checks. 
+% 
+% A major generalization and alternative to classical regression is quantile regression, which is a rather complete method for modeling and estimating conditional quantile functions (\cite{KoenkerBassettJr1978,Koenker2005}). In this approach, we have the general nonseparable representation $Y=Q_{Y|X}(U|X) = P(X)'\beta(U)$, where $U\sim U(0,1)$ is independent of $X$. We can back out the conditional distribution from the conditional quantile function through the integral transform as stated in eq(\ref{eq:QEDEtran}). The main advantage of quantile regression is that it permits covariates to impact the outcome by changing not only the location or scale of the distribution, but also its entire shape. Moreover, quantile regression is flexible in that by considering $P(X)$ that is rich enough, one could approximate the true conditional quantile function arbitrarily well when $Y$ has a smooth conditional density.
+The option \rt{formula} specifies the outcome $Y$ as the left hand side variable and the covariates $X$ as the right hand side variable(s). The option \rt{method} allows to select the method to estimate the conditional distribution. The following methods are implemented:
+\begin{enumerate}
+
+\item \rt{method = "qr"}, which is the default, implements 
+%selects the  quantile regression estimator of \cite{KoenkerBassettJr1978} to estimate the %conditional quantile function. Using the sample analog of (\ref{eq:QEDEtran}), 
+the quantile regresion estimator of the conditional distribution
+\begin{equation}
+\hat F_{Y_{j}|X_{j}}(y|x) = \varepsilon + \int_{(\varepsilon,1-\varepsilon)}1\{x'\hat \beta_j(u) \leq y\}du,\label{qr:dist}
+\end{equation}
+where $\varepsilon$ is a small constant that avoids estimation of tail quantiles, and $\hat \beta(u)$ is the \cite{KoenkerBassettJr1978} quantile regression estimator
+$$
+\hat \beta_j(u) = \arg \min_{b \in \mathbb{R}^{d_x}} \sum_{i=1}^{n_j} [u - 1\{Y_{ji} \leq X_{ji}'b\}] [Y_{ji} - X_{ji}'b].
+$$
+The quantile regression estimator calls the  \R package \Rpackage{quantreg} \citep{quantreg-package}. 
+The option \rt{trimming} specifies the value of the trimming parameter $\varepsilon$, with default value $\varepsilon = 0.005$.  The option \rt{nreg} sets the number of quantile regressions used to approximate the integral in (\ref{qr:dist}), with a default value of $100$ such that $(\varepsilon,1-\varepsilon)$ is approximated by the grid $\{\varepsilon, \varepsilon + (1-2\varepsilon)/99, \varepsilon + 2 (1-2\varepsilon)/99,  \ldots, 1 - \varepsilon \}$. 
+%The estimated conditional
+%quantile function is monotonized using the rearrangement method suggested by \cite{Chernozhukov2%009a}. This allows to invert the quantile function to obtain the conditional distribution %function. 
+This method should be used only with continuous dependent variables.
+
+\item \rt{method = "loc"} implements the estimator of the conditional distribution
+\begin{equation}
+\hat F_{Y_{j}|X_{j}}(y|x) = \frac{1}{n_j} \sum_{i=1}^{n_j} 1 \{Y_{ji} - X_{ji}'\hat \beta_j \leq y - x'\hat \beta_j \},\label{loc:dist}
+\end{equation}
+where $\hat \beta_j$ is the least square estimator
+\begin{equation}
+\hat \beta_j = \arg \min_{b \in \mathbb{R}^{d_x}} \sum_{i=1}^{n_j}  (Y_{ji} - X_{ji}'b)^2.\label{eq:ols}
+\end{equation}
+The estimator (\ref{loc:dist}) is based on a  restrictive location shift model that imposes that the covariates $X$ only affect the location of the outcome $Y$.
+%selects the linear location shift model. The conditional mean is estimated using OLS.  The %residuals are assumed to be independent from the regressors such that the conditional distributi%on can be estimated by the location shift plus the unconditional distribution of the residuals. 
+
+\item \rt{method = "locsca"} implements the estimator of the conditional distribution
+\begin{equation}
+\hat F_{Y_{j}|X_{j}}(y|x) = \frac{1}{n_j} \sum_{i=1}^{n_j} 1 \left\{\frac{Y_{ji} - X_{ji}'\hat \beta_j}{\exp (X_{2ji}'\hat \gamma_j/2)} \leq \frac{y - x'\hat \beta_j}{\exp (x_{2j}'\hat \gamma_j/2)} \right\},\label{sca:dist}
+\end{equation}
+where $\hat \beta_j$ is the least square estimator (\ref{eq:ols}), $X_{2j} \subseteq X_{j}$ with $\dim X_{2j} = d_{x_2},$ and
+$$
+\hat \gamma_j = \arg \min_{g \in \mathbb{R}^{d_{x_2}}} \sum_{i=1}^{n_j}  (\log (Y_{ji} - X_{ji}'\hat \beta_j)^2 - X_{2ji}'g)^2.
+$$
+The option \rt{scale\_variable} specifies the covariates $X_{2j}$ that affect the scale of the conditional distribution. The option \rt{counterfactual\_scale\_variable} selects the counterfactual scale variables when the counterfactual population is specified using \rt{counterfactual\_var}. By default, \rt{R} would use all the covariates as \rt{scale\_variable} and  \rt{counterfactual\_scale\_variable = counterfactual\_var}.  The estimator (\ref{sca:dist}) is based on a restrictive location scale shift model that imposes that the covariates $X$ only affect the location and scale of the outcome $Y$.
+
+% selects the linear location-scale shift model. The logarithm of the variance of the residuals is assumed to be a linear function of the covariates specified in \rt{scale\_variable}. The conditional mean is estimated using OLS. The conditional variance is estimated by a second linear regression, that of the logarithm of the squared estimated residuals on the scale variables. Finally, the distribution of the re-scaled residuals is estimated by the unconditional distribution of the re-scaled estimated residuals. You need to supply \rt{scale\_variable} and \rt{counterfactual\_scale\_variable}. 
+
+\item \rt{method = "cqr"} implements the censored quantile regression estimator of the conditional distribution, which is the same as (\ref{qr:dist}) with $\hat \beta(u)$ replaced by the \cite{Chernozhukov2002} censored quantile regression estimator. The options \rt{trimming} and \rt{nreg} apply to this method with the same functionality as for the \rt{qr} method. Moreover,  a variable containing a censoring indicator $C_j$ must be specified with \rt{censoring}. The censored quantile regression estimator has three-steps by default. The number of steps can be increased by the option \rt{nsteps}. In the first step, the censoring probabilities are estimated by a logit regression of the censoring indicator $C_j$ on all the covariates $X_j$. Then, for each quantile index $u$, the observations with sufficiently low censoring probabilities relative to $u$ are selected. We allow for misspecification of the logit by excluding the observations that could theoretically be used but have censoring probabilities in the highest \rt{firstc} quantiles, with a default of $0.1$, i.e. $10\%$ of the observations. In the second step, standard linear quantile regressions are estimated on the samples defined in step one. Using the estimated quantile regressions, we define a new sample of observations that can be used. This sample consists of all observations for which the estimated conditional quantile is above the censoring point. Again, we throw away observations in the lowest \rt{secondc} quantiles of the distribution of the residuals, with a default of $0.05$, i.e. $5\%$ of the observations. Step three consists in a new linear quantile regression using the sample defined in step two. Step three is repeated if \rt{nsteps} is above 3. 
+This method should be used only with censored dependent variables.
+
+\item \rt{method = "cox"} implements the duration regression estimator of the conditional distribution function
+\begin{equation}
+\hat F_{Y_{j}|X_{j}}(y|x) = 1 - \exp(-\exp(\hat t(y) - x'\hat \beta)),\label{cox:dist}
+\end{equation}
+where $\hat \beta$ is the Cox estimator of the regression coefficients and $\hat t(y)$ is the Cox estimator of the baseline integrated hazard function \citep{Cox1972}. The Cox estimator calls the \R package \Rpackage{survival} \citep{survival-package}. The estimator (\ref{cox:dist}) is based on a restrictive transformation location shift model that imposes that the covariates $X$ only affect the location of a monotone transformation of the outcome $t(Y)$, i.e.
+$$
+t(Y_j) = X_j'\beta_j + V_j,
+$$
+where $V_j$ has an extreme value distribution and is independent of $X_j$. This method should be used only with nonnegative dependent variables.
+
+% selects the Cox proportional hazard or duration regression model for the conditional distribution. The \R package \Rpackage{survival} is called. The conditional distribution is calculated using the estimated Cox coefficients and the estimated baseline survivor function.
+
+\item \rt{method = "logit"} implements the distribution regression estimator of the conditional distribution with logistic link function
+\begin{equation}
+\hat F_{Y_{j}|X_{j}}(y|x) = \Lambda(x'\hat \beta(y)),\label{dr:dist}
+\end{equation}
+where $\Lambda$ is the standard logistic distribution function, and $\hat \beta(y)$ is the distribution regression estimator
+\begin{equation}
+\hat \beta(y) = \arg \max_{b \in \mathbb{R}^{d_x}} \sum_{i=1}^{n_j} \left[1\{Y_{ji} \leq y\} \log \Lambda(X_{ij}'b) + 1\{Y_{ij} > y\} \log \Lambda(-X_{ji}'b) \right]. \label{eq:dr}
+\end{equation}
+The estimator (\ref{dr:dist}) is based on a flexible model where each covariate can have a heterogenous effect at different parts of the distribution. This method can be used with continuous dependent variables and censored dependent variables with fixed censoring point.
+
+
+\item \rt{method = "probit"} implements the distribution regression estimator of the conditional distribution with normal link function, i.e. where $\Lambda$ is the standard normal distribution function in (\ref{dr:dist}) and (\ref{eq:dr}).
+
+% selects the distribution regression model with probit link for the conditional distribution. First, \rt{nreg} quantiles (uniformly distributed between 0 and 1) of the unconditional distribution of the dependent variable of \rt{formula} are estimated. Then, for each of these sample quantiles, $y$, the conditional distribution function at $y$ is estimated by a probit regression of the indicator of the outcome being below $y$, $1\{Y_j \leq y\}$, on the covariates $X_j$.
+
+\item \rt{method = "lpm"} implements the linear probability model estimator of the conditional distribution 
+\[
+\hat F_{Y_{j}|X_{j}}(y|x) = x'\hat \beta(y),
+\]
+where $\hat \beta(y)$ is the least squares estimator
+\[
+\hat \beta(y) = \arg \min_{b \in \mathbb{R}^{d_x}} \sum_{i=1}^{n_j} (1\{Y_{ji} \leq y\} -X_{ij}'b )^2. 
+\]
+This method might produce estimates of the conditional distribution outside the interval $[0,1]$.
+
+% selects the distribution regression model with identity link or linear probability model for the conditional distribution. First, \rt{nreg} quantiles (uniformly distributed between 0 and 1) of the unconditional distribution of the dependent variable of \rt{formula} are estimated. Then, for each of these sample quantiles, $y$, the conditional distribution function at $y$ is estimated by an OLS regression of the indicator of the outcome being below $y$, $1\{Y_j \leq y\}$, on the covariates $X_j$.
+
+\end{enumerate}
+
+For the methods (2)--(8), the option \rt{nreg} sets the number of values of $y$ to evaluate the estimator of the conditional distribution function. These values are uniformly distributed among the observed values of $Y_j$. If \rt{nreg} is greater than the number of observed values of $Y_j$, then all the observed values are used.
+
+%correspond to sample quantiles of $Y_j$. For example, the default value of 100 specifies the sample quantiles with indexes $\{0,1,\ldots ,99\}/99$.
+
+% with the logistic  
+% selects the distribution regression model with logit link for the conditional distribution. First, \rt{nreg} quantiles (uniformly distributed between 0 and 1) of the unconditional distribution of the outcome are estimated. Then, for each of these sample quantiles, $y$, the conditional distribution function at $y$ is estimated by a logit regression of the indicator of the outcome being below $y$, $1\{Y_j \leq y\}$, on the covariates $X_j$. 
+
+
+\subsection{Inference}
+
+% The uniform intervals are based on a functional central limit theorem for the empirical QE 
+% derived in \cite{ChernozhukovFernandez-ValMelly2013}. The empirical QE satisfies in $\ell^{\infty}(\mathcal{T})$
+% \begin{equation}
+% \sqrt{n}(\hat{\Delta}-\Delta) \rightsquigarrow\bar{Z},
+% \end{equation}
+% where $n$ is a sample size index that $n$ depends on the sample sizes of populations $j$ and $k$, and $\bar{Z}$ is a zero-mean Gaussian process. 
+% 
+% For ease of inference, \cite{ChernozhukovFernandez-ValMelly2013} recommend and prove the validity of a general resampling procedure called the \textit{exchangeable bootstrap}. This procedure incorporates many popular forms of resampling as special case, namely the empirical bootstrap, weighted bootstrap, $m$ out of $n$ bootstrap, and subsampling. \footnote{For details of the bootstrap method and its implementation, see \cite{ChernozhukovFernandez-ValMelly2013}.}
+% 
+% The bootstrap version of the estimator of the counterfactual distribution is 
+% \begin{equation}
+% \hat{F}_{Y\left\langle j|k\right\rangle }^{*}(y)=\int_{\mathcal{X}_{k}}\hat{F}_{Y_{j}|X_{j}}^{*}(y|x)d\hat{F}_{X_{k}}^{*}(x),\quad y\in\mathcal{Y}_{j},(j,k)\in\mathcal{JK}
+% \end{equation}
+% The component $\hat{F}_{X_k}^{*}$ is a bootstrap version of the covariate distribution estimator. The component $\hat{F}_{Y_{j}|X_{j}}^{*}$ is a bootstrap version of the conditional distribution estimator. Bootstrap versions of the estimators of the counterfactual quantiles and other functionals are obtained by monotonizing $\hat{F}_{Y\left\langle j|k\right\rangle }^{*}$ using rearrangement if required and setting $\hat{Q}_{Y\left\langle j|k\right\rangle }^{*}(\tau) = \hat{F}_{Y\langle j|k\rangle}^{*\leftarrow}(\tau)$. Algorithm 2 in \cite{ChernozhukovFernandez-ValMelly2013} describes in details how to obtain estimators of the counterfactual distribution, quantiles, and other functionals. 
+% 
+% The bootstrap distributions are useful to perform aysmptotically valid inference on the counterfactual effects of interest. An asymptotic simultaneous $(1-\alpha)$ confidence band for the counterfactual distribution $F_{Y\left\langle j|k \right\rangle}(y)$ over the region $y\in \mathcal{Y}_{j}$ is defined by the end-point functions
+% \begin{equation}
+%  \hat{F}_{Y\left\langle j|k\right\rangle }^{\pm}=\hat{F}_{Y\left\langle j|k\right\rangle }(y)\pm\hat{t}_{1-\alpha}\hat{\Sigma}_{jk}(y)^{\frac{1}{2}}/\sqrt{n},\label{eq:band}
+% \end{equation}
+% such that 
+% \begin{equation}
+% \lim_{n\rightarrow\infty}\mathbb{P}\{F_{Y\langle j|k\rangle}(y)\in[\hat{F}_{Y\langle j|k\rangle}^{-}(y),\hat{F}_{Y\langle j|k\rangle}^{+}(y)]\ \mathrm{for\ all\ }y\in\mathcal{Y}_{j}\}=1-\alpha.\label{eq:coverage}
+% \end{equation}
+% Here, $\hat{\Sigma}_{jk}(y)$ is a uniformly consistent estimator of $\Sigma_{jk}(y)$, the asymptotic variance function of $\sqrt{n}(\hat{F}_{Y\left\langle j|k \right\rangle}(y) - F_{Y\left\langle j|k \right\rangle}(y))$. To achieve the coverage property in equation (\ref{eq:coverage}), we set the critical value $\hat{t}_{1-\alpha}$ as a consistent estimator of the $(1-\alpha)$ quantile of the Kolmogorov-Smirnov maximal $t$-statistic: 
+% \[
+% t=\sup_{y\in\mathcal{Y}_{j}}\sqrt{n}\hat{\Sigma}_{jk}(y)^{-1/2}|\hat{F}_{Y\langle j|k\rangle}(y)-F_{Y\langle j|k\rangle}(y)|
+% \]
+% Algorithm 3 in \cite{ChernozhukovFernandez-ValMelly2013} describes how to obtain uniform bands using exchangeable bootstrap and how to obtain a robust version estimate of $\Sigma_{jk}(y)^{1/2}$. Similar uniform bands for the counterfactual quantile functions and other functionals can be obtained by replacing $\hat{F}_{Y\left\langle j|k \right\rangle}^{*}$ with $\hat{Q}_{Y\left\langle j|k \right\rangle}^{*}$ and adjusting the indexing sets accordingly. The confidence bands can be used to test functional hypotheses about counterfactual effects. Consistency of the confidence bands follow from the consistency of bootstrap for estimating the law of the limit Gaussian process $\bar{Z}_{jk}$. \footnote{\cite{ChernozhukovFernandez-ValMelly2013} provides a formal proof for the sake of completeness, e.g., characterizes the limit law of the estimator of the counterfactual distribution, which in turn determines the limit laws of the estimators of the counterfactual quantile functions and other functionals. The reason for proposing the bootstrap method is because the limit processes are nonpivotal -- their covariance functions depend on unknown, though estimable, nuisance parameters.} 
+
+% In function \rt{counterfactual}, if \rt{noboot = TRUE} this will suppress the bootstrap -- bootstrap can be very demanding in term of computation time. Therefore, it is recommended to switch it off for the exploratory analysis of the data. \rti{reps} select the number of bootstrap replications. This number will matter only if the bootstrap has not be suppressed. The default is 100. \rti{first} and \rti{last} set the part of the distribution used for the inference procedures. The tails of the distribution should not be used because standard asymptotic does not apply on these parts. The parts that should be excluded depend on the sample size and on the distribution of the dependent variable. \rti{first} sets the lowest quantile used and \rti{last} sets the highest quantile used. The default values are 0.1 and 0.9. \rti{cons\_test} add tests of the null hypothesis that QE for all taus between first and last. The null hypothesis that QE = 0 for all taus between first and last is tested by default. The other null hypothesis that the QEs are constant is also tested by default.
+% 
+% %\subsubsection{Simultaneous Bands and Testing}
+% When we implement the inference through \rt{counterfactual}, this will produce two tables: the first table would report both the pointwise and simultaneous confidence sets for the QEs; the second table would report the p-values for some null-hypothesis. 
+% 
+% For table one, pointwise and simultaneous confidence sets for the QEs are constructed by taking into account the sampling variation in the estimation of the relationship between the outcome and covariates. The pointwise standard errors are obtained by empirical bootstrap. The uniform confidence intervals are obtained by inverting the Kolmogorov-Smirnov test statistic, whereas the bootstrap is used to estimate the distribution of the test statistic. 
+% 
+% For table two, both the Kolmogorov-Smirnov and the Cramer-von-Misses-Smirnov statistic are reported. The first null-hypothesis is the correct parametric specification of the conditional model.%
+% \footnote{ Note that only the implications of the conditional estimation on the unconditional distribution is used. This implies that this test may have a low power. It has no power at all for the linear probability and the logit models. %
+% } The second null hypothesis is that the change in the distribution of the covariates has no effect at all. This is stronger than the absence of any mean effect. Other null hypotheses of constant QE (but at a different level than 0) can be added with the option \rt{cons\_test}. The null hypothesis that all QEs are equal to the median policy effect is also tested. Finally, the null-hypotheses that the counterfactual (or observed) distribution first order stochastically dominates the observed (or counterfactual) distribution are tested. 
+
+The command \rt{counterfactual} reports pointwise and uniform confidence intervals for the QEs over a prespecified set of quantile indexes. The construction of the intervals rely on  functional central limit theorems and bootstrap functional central limit theorems for the empirical QEs derived in \cite{ChernozhukovFernandez-ValMelly2013}. In particular, the pointwise intervals are based on the normal distribution, whereas the uniform intervals are based on two resampling schemes: empirical and weighted bootstrap. Thus, the $(1-\alpha)$ confidence interval for $\Delta(\tau)$ on $\mathcal{T}$ has the form
+$$
+\{ \hat \Delta(\tau) \pm c_{1-\alpha} \hat \Sigma(\tau) : \tau \in \mathcal{T}\},
+$$
+where $\hat \Sigma(\tau)$ is the standard error of $\hat \Delta(\tau)$ and $c_{1-\alpha}$ is a critical value. There are two options to obtain $\hat \Sigma(\tau)$. The default option \rt{robust=FALSE} computes the bootstrap standard deviation of $\hat \Delta(\tau)$; whereas the option \rt{robust=TRUE} computes the bootstrap interquartile range rescaled with the normal distribution, $\hat \Sigma(\tau) = (q_{0.75}(\tau) - q_{0.25}(\tau))/(z_{0.75} - z_{0.25})$ where $q_p(\tau)$ is the $p$th quantile of the bootstrap draws of $\hat \Delta(\tau)$ and $z_p$ is the $p$th quantile of the standard normal. The pointwise critical value is $c_{1-\alpha} = z_{1-\alpha}$, and the uniform critical 
+value is $c_{1-\alpha} = \hat t_{1-\alpha},$ where $\hat t_{1-\alpha}$ is a bootstrap estimator of the $(1-\alpha)$th quantile of the Kolmogorov-Smirnov maximal t-statistic 
+$$
+t = \sup_{\tau \in \mathcal{T}} |\hat \Delta(\tau) - \Delta(\tau) | / \hat \Sigma(\tau).
+$$
+
+\medskip
+
+In addition to the intervals, \rt{counterfactual} reports the p-values for several functional tests based on two test-statistic: Kolmogorov-Smirnov and the Cramer-von-Misses-Smirnov. The null-hypotheses considered are
+\begin{enumerate}
+\item Correct parametric specification of the model for the conditional distribution.  This test compares the empirical distribution of the outcome $Y_j$ with the estimate of the counterfactual distribution in the reference population 
+\[
+\hat F_{Y\left\langle j|j\right\rangle }(y):=\int_{\mathcal{X}_{j}}\hat F_{Y_{j}|X_{j}}(y|x)d\hat F_{X_{j}}(x).
+\]
+The power of this specification test might be low  because it only uses the implications of the conditional distribution on the counterfactual distribution. For example, the test is not informative for the linear probability and logit models where the counterfactual distribution in the reference population is identical to the empirical distribution by construction. If \rt{group} is specified and \rt{treatment=TRUE} is selected, then the test is performed in the population defined by \rt{group=1}. If in addition the option \rt{decomposition=TRUE} is selected, then the test is performed in the populations defined by \rt{group=0} and \rt{group=1}, and in the combined population including both  \rt{group=0} and \rt{group=1}.
+
+\item Zero QE at all the quantile indexes of interest: $\Delta(\tau) = 0$ for all  $\tau \in \mathcal{T}$. This is stronger than a zero average effect. Other null hypotheses of constant quantile effect (but at a different level than 0) can be added with the option \rt{cons\_test}. 
+
+\item Constant QE at all quantile indexes of interest: $\Delta(\tau) = \Delta(0.5)$ for all  $\tau \in \mathcal{T}$. 
+
+\item First-order stochastic dominance: $\Delta(\tau) \geq 0$ for all  $\tau \in \mathcal{T}$.
+
+\item Negative first-order stochastic dominance: $\Delta(\tau) \leq 0$ for all  $\tau \in \mathcal{T}$.
+
+\end{enumerate}
+
+\medskip
+
+The options of  \rt{counterfactual} related to inference are:
+
+\begin{enumerate}
+\item \rt{noboot = TRUE} suppresses the bootstrap. The bootstrap can be very demanding in terms of computation time. Therefore, it is recommended to switch it off for the exploratory analysis of the data.
+
+\item \rt{weightedboot = TRUE} selects weighted bootstrap with standard exponential weights. The default \rt{weightedboot = FALSE} selects empirical bootstrap with multinomial weights. We recommend weighted bootstrap when the covariates include categorical variables with small cell sizes to avoid singular designs in the bootstrap draws. 
+
+
+\item \rt{reps} specifies the number of bootstrap replications. This number will matter only if the bootstrap has not be suppressed. The default is 100.
+
+\item \rt{alpha} specifies the significance level of the tests and confidence intervals. Note that the confidence level of the confidence interval is 1 - \rt{alpha}. Thus, the default value of $0.05$ produces $95\%$ confidence intervals.
+
+\item \rt{first} and \rt{last} select the subset of quantile indexes of interest for inference.  The tails of the distribution should not be used because standard asymptotic does not apply to these parts.  The needed amount of tail trimming depends on the sample size and on the distribution of the dependent variable.  \rt{first} sets the lowest quantile index used and \rt{last} sets the highest quantile index used.  The default values are 0.1 and 0.9 so that $\mathcal{T} = [0.1, 0.9]$.
+
+
+
+\item \rt{cons\_test} add tests of the null hypothesis that $\Delta(\tau)  = $ \rt{const\_test} for all $\tau$ between \rt{first} and \rt{last}.  The null hypothesis that $\Delta(\tau)  = 0$ for all  $\tau$ between \rt{first} and \rt{last} is tested by default.  The null hypothesis that the quantile effects are constant is also tested by default.
+\end{enumerate}
+
+\subsection{Parallel Computing}
+The command \rt{counterfactual} provides functionality for parallel computing, which is specially useful to speed up the execution of the bootstrap. There are two options related to parallel computing:
+
+\begin{enumerate}
+\item \rt{sepcore} specifies whether multiple cores should be used. The default value \rt{sepcore = FALSE} turns off the parallel computing.
+\item \rt{ncore} selects the number of cores to use for parallel computing. The information of this option is only used when parallel computing is switched on with \rt{sepcore = TRUE}.
+\end{enumerate}
+
+\section{Empirical Examples}
+% From a practical standpoint, the main implementation decision concerns the choice of the estimator of the conditional distributions $F_{Y|X}$. Perhaps the most important methods are \rt{qr} for estimating the conditional quantile model and \rt{logit} for estimating the conditional distribution model. If you don't know what the model would be, you may choose \rt{method="qr"} which is also the default choice. 
+
+%We consider the use of quantile regression, distribution regression, classical regression, and duration/transformation regression. The classical regression and duration regression models are parsimonious special cases of the first two models. However, these models are not appropriate in this application due to substantial conditional heteroskedasticity in log wages. As the additional restrictions that these two models impose are rejected by the data, we focus on the distribution and quantile regression approaches. 
+
+We consider two empirical examples to illustrate the functionality of the command \rt{counterfactual}. The first example is an estimation of Engel curves that includes a counterfactual analysis where the counterfactual population is an artificial transformation of a reference population. The second example is wage decomposition with respect to union status where the reference and counterfactual populations correspond to two different  groups. 
+
+\subsection{Engel Curves}\label{Sec:example2}
+We use the classical Engel 1857 dataset  to estimate the relationship between food expenditure (\rt{foodexp}) and annual household income (\rt{income}), and then report the estimates of the QE of a change in the distribution of the annual household income that might be induced for example by a variation in income taxation.\footnote{This is the same data set as in the quantile regression package \Rpackage{quantreg}, see
+\cite{quantreg-package}.}
+%\footnote{This relates to the taxation example discussed in Section \ref{sec:Introduction}.} 
+We estimate the conditional distribution with the quantile regression method, i.e., \rt{method ="qr"}.
+
+\medskip
+
+First, we generate the variable \rt{counterfactual\_income} with the counterfactual values of income and plot the reference and counterfactual income distributions. The counterfactual distribution corresponds to a mean preserving spread of the distribution in the reference population that reduces standard deviation by $25\%$. 
+
+<< label = fig1plot, include = false, eval = true >>=
+library(quantreg)
+data(engel)
+attach(engel)
+counter_income <- mean(income)+0.75*(income-mean(income))
+cdfx <- c(1:length(income))/length(income)
+plot(c(0,4000),range(c(0,1)), xlim =c(0, 4000), type="n", xlab = "Income", 
+     ylab="Probability")
+lines(sort(income), cdfx)
+lines(sort(counter_income), cdfx, lwd = 2, col = 'grey70')
+legend(1500, .2, c("Original", "Counterfactual"), lwd=c(1,2),bty="n", 
+       col=c(1,'grey70'))
+@
+
+\begin{figure} 
+\begin{center}
+<< label = fig1, fig = true, echo = false, eval = true, width=4.5, height=4.5 >>=
+<<fig1plot>>
+@
+\end{center}
+\caption{Observed and counterfactual distributions of income}
+\end{figure}
+
+\medskip
+\medskip
+To estimate the QEs of this counterfactual change we turn on the option  \rt{transformation} of \rt{counterfactual} by setting \rt{transformation = TRUE}, and specify that the counterfactual values of the covariate \rt{income} are in the generated variable \rt{counter\_income} by setting \rt{counterfactual\_var = counter\_income}. This yields:
+
+%We estimate the QE function over the default set of quantile indexes $\mathcal{T} = \{0.10, 0.20, ..., 0.90 \}$.    
+
+% For using \rt{counterfactual}, the additional option, which is adviseable to use if the counterfactual variable is generated from the transformation of the reference group, is \rti{transformation}. \rti{transformation} takes a logical value which is \rt{FALSE} by default. As the counterfactual income is generated from the transformation of the original income, we need to set \rt{transformation=TRUE}. 
+
+<<eval= true>>=
+qrres <- counterfactual(foodexp~income, counterfactual_var
+        = counter_income, transformation = TRUE, sepcore = TRUE, ncore = 2)
+@
+
+%\subsubsection{Plot the simultaneous bands for conditional quantile models}
+We reject the simultaneous hypotheses of zero, constant, positive and negative effect of the income redistribution at all the deciles. The QR model for the conditional distribution cannot be rejected at conventional significance levels. 
+
+\medskip
+
+Finally, we reestimate the QE function on the larger set of quantiles
+$\{0.01, 0.02, \ldots , 0.99 \}$, and plot a uniform confidence band over the subset $\{0.10, 0.11, \ldots , 0.90 \}$ constructed by empirical bootstrap with 100 replications. In Figure \ref{fig:engel} we can visually reject the functional hypotheses of zero, constant, positive and negative effect at the percentiles considered.  We use the option \rt{printdeco = FALSE} to supress the display of the table of results.
+
+<< eval = true >>=
+taus  <- c(1:99)/100
+first <- sum(as.double(taus <= .10))
+last  <- sum(as.double(taus <= .90))
+rang  <- c(first:last)
+rqres <- counterfactual(foodexp~income, counterfactual_var=counter_income, 
+                        nreg=100, quantiles=taus, transformation = TRUE, 
+                        printdeco = FALSE, sepcore = TRUE,ncore=2)
+duqf   <- (rqres$resCE)[,1]
+l.duqf <- (rqres$resCE)[,3]
+u.duqf <- (rqres$resCE)[,4]
+@
+
+<< label = fig2plot, include = false, eval = true >>=
+plot(c(0,1), range(c(min(l.duqf[rang]), max(u.duqf[rang]))), xlim = c(0,1), 
+     type = "n", xlab = expression(tau), ylab = "Difference in Food Expenditure", 
+     cex.lab=0.75)
+polygon(c(taus[rang], rev(taus[rang])), c(u.duqf[rang], rev(l.duqf[rang])), 
+        density = -100, border = F, col = "grey70", lty = 1, lwd = 1)
+lines(taus[rang], duqf[rang]) 
+abline(h = 0, lty = 2) 
+legend(0, -90, "QE", cex = 0.75, lwd = 4, bty = "n", col = "grey70")
+legend(0, -90, "QE", cex = 0.75, lty = 1, bty = "n", lwd = 1)
+@
+
+\begin{figure}
+\begin{center}
+<< label = fig2, fig = true, echo = false, eval = true, width=4.5, height=4.5 >>=
+<<fig2plot>>
+@
+\end{center}
+\caption{Quantile effects of income redistribution on food consumption}\label{fig:engel}
+\end{figure}
+
+\subsection{Union Premium}\label{sec:examples}
+We use an extract of the U.S. National Longitudinal Survey of Young Women (NLSW) for employed women in 1988 to estimate a wage decomposition with respect to union status.\footnote{This dataset is available from the Stata's sample datasets at 	\rt{http://www.stata-press.com/data/r9/nlsw88.dta}.} The outcome variable $Y$ is the log hourly wage (\rt{lwage}), the covariates $X$ include job tenure in years (\rt{tenure}), years of schooling (\rt{grade}), and total experience (\rt{ttl\_exp}), and the union indicator \rt{union} defines the reference and counterfactual populations. We estimate the conditional distributions by distribution regression with logistic link and duration regression, i.e., \rt{method ="logit"} and \rt{method ="cox"}. We use weighted bootstrap for the construction of uniform confidence intervals and hypothesis tests and run  parallel computing with 2 nodes.
+ 
+
+% Women to estimate 
+% We use NLSW88 extract data which specified \rti{group} to show the leading distribution regression method for modeling and estimating $F_{Y|X}$.%
+% \footnote{%
+%For the choice of models see \cite{ChernozhukovFernandez-ValMelly2013}.}
+
+\medskip
+
+We start by estimating the wage decomposition by logistic distribution regression, where the counterfactual population is specified with \rt{group=union} with the options \rt{treatment=TRUE} and \rt{decomposition=TRUE} to estimate the composition, structure and total effects. The structure effect in this case correspond to the treatment effect of union on the treated or union premium. The tables show that the union workers earn higher wages than the nonumion workers throuoghout the distribution although the union wage gap is decreasing in the quantile index. This gap can be mostly explained by differences in tenure, education and experience between union and nonunion workers in the upper tail of the distribution and by the union premium in the rest of the distribution.
+
+%implement the inference with specified \rt{group=union} and there are three covariates from the %reference group. 
+
+<<eval=true>>=
+data(nlsw88)
+attach(nlsw88)
+lwage    <- log(wage)
+logitres <- counterfactual(lwage~tenure+ttl_exp+grade, 
+                          group = union, treatment=TRUE,  
+                          decomposition=TRUE, method = "logit", 
+                          weightedboot = TRUE, sepcore = TRUE, ncore=2)
+@
+\medskip
+%\paragraph{Plot the simultaneous bands for conditional distribution models}
+Next, we reestimate the QE function on the larger set of quantiles $\{0.01, 0.02, ..., 0.99 \}$, and plot a uniform confidence band over the subset $\{0.10, 0.11, ..., 0.90 \}$) constructed by weighted bootstrap with 100 replications. Figure \ref{fig:union} shows  that the structure effect is heterogeneous across the quantile indexes and explains most of the union wage gap below the third quartile. The composition effect is constant across quantile indexes and explains most of the wage gap above the third quartile. 
+
+% we show how to plot the QEs together with the simultaneous confidence bands with \rt{method = "logit"} when more quantiles are estimated:
+
+<<eval=true >>=
+taus  <- c(1:99)/100
+first <- sum(as.double(taus <= .10))
+last  <- sum(as.double(taus <= .90))
+rang  <- c(first:last) 
+logitres <- counterfactual(lwage~tenure+ttl_exp+grade, 
+          group = union, treatment=TRUE, quantiles=taus, 
+          method="logit", nreg=100, weightedboot = TRUE, 
+          printdeco=FALSE, decomposition = TRUE, 
+          sepcore = TRUE,ncore=2)
+
+duqf_SE   <- (logitres$resSE)[,1]
+l.duqf_SE <- (logitres$resSE)[,3]
+u.duqf_SE <- (logitres$resSE)[,4]
+
+duqf_CE   <- (logitres$resCE)[,1]
+l.duqf_CE <- (logitres$resCE)[,3]
+u.duqf_CE <- (logitres$resCE)[,4]
+
+duqf_TE   <- (logitres$resTE)[,1]
+l.duqf_TE <- (logitres$resTE)[,3]
+u.duqf_TE <- (logitres$resTE)[,4]
+
+range_x <- min(c(min(l.duqf_SE[rang]), min(l.duqf_CE[rang]), 
+                min(l.duqf_TE[rang])))
+range_y <- max(c(max(u.duqf_SE[rang]), max(u.duqf_CE[rang]),
+                max(u.duqf_TE[rang])))
+@
+
+<< label = fig3plot, include = false, eval = true >>=
+par(mfrow=c(1,3))
+
+plot(c(0,1), range(c(range_x, range_y)), xlim = c(0,1), type = "n", 
+     xlab = expression(tau), ylab = "Difference in Wages", cex.lab=0.75,  
+     main = "Total")
+polygon(c(taus[rang],rev(taus[rang])), 
+        c(u.duqf_TE[rang], rev(l.duqf_TE[rang])), density = -100, border = F, 
+        col = "grey70", lty = 1, lwd = 1)
+lines(taus[rang], duqf_TE[rang]) 
+abline(h = 0, lty = 2)
+
+plot(c(0,1), range(c(range_x, range_y)), xlim = c(0,1), type = "n", 
+     xlab = expression(tau), ylab = "", cex.lab=0.75, main = "Structure")
+polygon(c(taus[rang],rev(taus[rang])), 
+        c(u.duqf_SE[rang], rev(l.duqf_SE[rang])), density = -100, border = F, 
+        col = "grey70", lty = 1, lwd = 1)
+lines(taus[rang], duqf_SE[rang]) 
+abline(h = 0, lty = 2)
+
+plot(c(0,1), range(c(range_x, range_y)), xlim = c(0,1), type = "n", 
+     xlab = expression(tau), ylab = "", cex.lab=0.75, main = "Composition")
+polygon(c(taus[rang],rev(taus[rang])), 
+        c(u.duqf_CE[rang], rev(l.duqf_CE[rang])), density = -100, border = F, 
+        col = "grey70", lty = 1, lwd = 1)
+lines(taus[rang], duqf_CE[rang]) 
+abline(h = 0, lty = 2)
+@
+\begin{figure}
+\begin{center}
+<< label = fig3, fig = true, echo = false, eval = true, width=6.3, height=3.25 >>=
+<<fig3plot>>
+@
+\end{center}
+\caption{Wage decomposition with respect to union: logit regression estimates}\label{fig:union}
+\end{figure}
+
+
+%\paragraph{Cox transformation}
+\medskip
+%\pagebreak
+Finally, we repeat the point and interval estimation using the duration regression method with the option \rt{method = "cox"}. Despite of relying on a more restrictive model for the conditional distribution, the duration regression estimates in Figure \ref{fig:union2}  are similar to the logit regression estimates in Figure \ref{fig:union}.
+
+%As an illustration, below we also show how to plot the QEs together with the simultaneous confidence bands with \rt{method = "cox"} when more quantiles are estimated:
+
+<< eval=true  >>=
+coxres <- counterfactual(lwage~tenure+ttl_exp+grade, 
+          group = union, treatment=TRUE, quantiles=taus,  
+          method="cox", nreg=100, weightedboot = TRUE,  
+          printdeco = FALSE, decomposition = TRUE, sepcore = TRUE,ncore=2)
+
+duqf_SE   <- (coxres$resSE)[,1]
+l.duqf_SE <- (coxres$resSE)[,3]
+u.duqf_SE <- (coxres$resSE)[,4]
+
+duqf_CE   <- (coxres$resCE)[,1]
+l.duqf_CE <- (coxres$resCE)[,3]
+u.duqf_CE <- (coxres$resCE)[,4]
+
+duqf_TE   <- (coxres$resTE)[,1]
+l.duqf_TE <- (coxres$resTE)[,3]
+u.duqf_TE <- (coxres$resTE)[,4]
+
+range_x = min(c(min(l.duqf_SE[rang]), min(l.duqf_CE[rang]), 
+                min(l.duqf_TE[rang])))
+range_y = max(c(max(u.duqf_SE[rang]), max(u.duqf_CE[rang]), 
+                max(u.duqf_TE[rang])))
+@
+
+<< label = fig4plot, include = false, eval = true >>=
+par(mfrow=c(1,3))
+plot(c(0,1), range(c(range_x, range_y)), xlim = c(0,1), type = "n", 
+     xlab = expression(tau), ylab = "Difference in Wages", cex.lab=0.75, 
+     main = "Total")
+polygon(c(taus[rang],rev(taus[rang])), 
+        c(u.duqf_TE[rang], rev(l.duqf_TE[rang])), density = -100, border = F, 
+        col = "grey70", lty = 1, lwd = 1)
+lines(taus[rang], duqf_TE[rang]) 
+abline(h = 0, lty = 2)
+
+plot(c(0,1), range(c(range_x, range_y)), xlim = c(0,1), type = "n", 
+     xlab = expression(tau), ylab = " ", cex.lab=0.75, main = "Structure")
+polygon(c(taus[rang],rev(taus[rang])), 
+        c(u.duqf_SE[rang], rev(l.duqf_SE[rang])), density = -100, border = F, 
+        col = "grey70", lty = 1, lwd = 1)
+lines(taus[rang], duqf_SE[rang]) 
+abline(h = 0, lty = 2)
+
+plot(c(0,1), range(c(range_x, range_y)), xlim = c(0,1), type = "n", 
+     xlab = expression(tau), ylab = "", cex.lab=0.75, main = "Composition")
+polygon(c(taus[rang],rev(taus[rang])), 
+        c(u.duqf_CE[rang], rev(l.duqf_CE[rang])), density = -100, border = F, 
+        col = "grey70", lty = 1, lwd = 1)
+lines(taus[rang], duqf_CE[rang]) 
+abline(h = 0, lty = 2)
+@
+\begin{figure}
+\begin{center}
+<< label = fig4, fig = true, echo = false, eval = true, width=6.3, height=3.25 >>=
+<<fig4plot>>
+@
+\end{center}
+\caption{Wage decomposition with respect to union: duration regression estimates}\label{fig:union2}
+\end{figure}
+
+ 
+
+%\newpage
+
+\bibliographystyle{chicago}
+\bibliography{vignette}
+
+
+\end{document}
+
