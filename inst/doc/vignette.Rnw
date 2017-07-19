@@ -95,8 +95,8 @@ The command \rt{counterfactual}  has the general syntax:
 <<eval=false>>=
 counterfactual(formula, data, weights, na.action = na.exclude, 
                group, treatment = FALSE, decomposition = FALSE,
-               transformation = FALSE, counterfactual_var, 
-               quantiles, method = "qr", 
+               counterfactual_var, transformation = FALSE,
+               quantiles = c(1:9)/10, method = "qr",
                trimming = 0.005, nreg = 100, scale_variable, 
                counterfactual_scale_variable, 
                censoring = 0, right = FALSE, nsteps = 3, 
@@ -119,7 +119,7 @@ Let $F_{X_{k}}$ denote the covariate distribution in population $k\in \mathcal{K
 F_{Y_{j}|X_{j}}$ and $Q_{Y_{j}|X_{j}}$ denote the conditional distribution and quantile functions in population $j\in \mathcal{J}$.
  We denote the support of $X_{k}$ by $%
 \mathcal{X}_{k}\subseteq \mathbb{R}^{d_{x}}$, and the region of interest for $%
-Y_{j}$ by $\mathcal{Y}_{j}\subseteq \mathbb{R}$. The refer to $j$ as the reference population(s) and to $k$ as the counterfactual population(s).
+Y_{j}$ by $\mathcal{Y}_{j}\subseteq \mathbb{R}$. We refer to $j$ as the reference population(s) and to $k$ as the counterfactual population(s).
 % We assume for simplicity that the number of
 % populations, $|\mathcal{K}|$, is finite. Further, define $\mathcal{Y}_{j}%
 % \mathcal{X}_{j}=\{(y,x):y\in \mathcal{Y}_{j},x\in \mathcal{X}_{j}\}$, $%
@@ -143,7 +143,7 @@ The reference and counterfactual populations can be specified to \rt{counterfact
 \item If the option \rt{group} has been specified, then $j$ is the population defined by \rt{group=0} and $k$ is the population defined by \rt{group=1}. This means that both $X$ and $Y$ are observed in \rt{group=0}, but only $X$ needs to be observed in \rt{group=1}. When both $X$ and $Y$ are observed in \rt{group=1}, the option \rt{treatment=TRUE} specifies that the structure or treatment effect should be computed, whereas the dafault option \rt{treatment=FALSE} specifies that the composition effect should be computed; see the definition of the structure and composition effects in the decomposition (\ref{eq:decomp}). If in addition to  \rt{treatment=TRUE} the option \rt{decomposition=TRUE} is selected, then the entire decompostion (\ref{eq:decomp}) is reported including the composition, structure and total effects. Note that we can reverse the roles of the populations defined by an indicator variable \rt{vargroup} by setting either \rt{group=vargroup} or \rt{group=1-vargroup}.
 
 
-\item Alternatively, the option \rt{counterfactual\_var} can be used to specify the covariates in the counterfactual population. In this case, the names on the right handside of \rt{formula} contain the variables in $X_j$ and \rt{counterfactual\_var} contains the variables in $X_k$. The option \rt{transformation=TRUE} should be used when $X_k$ is generated as a transformation of $X_j$, e.g., equation (\ref{eq:transform}). The list passed to \rt{counterfactual\_var} must contain exactly the same number of variables as the list of independent variables in \rt{formula} and  the order of the variables in the list matters.
+\item Alternatively, the option \rt{counterfactual\_var} can be used to specify the covariates in the counterfactual population. In this case, the names on the right-hand side of \rt{formula} contain the variables in $X_j$ and \rt{counterfactual\_var} contains the variables in $X_k$. The option \rt{transformation=TRUE} should be used when $X_k$ is generated as a transformation of $X_j$, e.g., equation (\ref{eq:transform}). The list passed to \rt{counterfactual\_var} must contain exactly the same number of variables as the list of independent variables in \rt{formula} and  the order of the variables in the list matters.
 \end{enumerate}
 
 Counterfactual distribution and quantile functions are formed by combining the conditional distribution in the population $j$
@@ -159,15 +159,15 @@ where $(j,k) \in \mathcal{J}\mathcal{K}$, and $F_{Y{\langle j|k\rangle }}^{\left
 function of $F_{Y{\langle j|k\rangle }}$.  The main interest lies in the quantile effect (QE) function, defined as the difference of two counterfactual quantile  
 functions over a set of quantile indexes $\mathcal{T} \subset (0,1)$: 
 \[
-\Delta(\tau) =  Q_{Y{\langle j|k\rangle }}(\tau ) - Q_{Y{\langle j|j \rangle }}(\tau ), \ \tau \in \mathcal{T},  
+\Delta_C(\tau) =  Q_{Y{\langle j|k\rangle }}(\tau ) - Q_{Y{\langle j|j \rangle }}(\tau ), \ \tau \in \mathcal{T},  
 \]
 where $j \in \mathcal{J}$ and $k \in \mathcal{K}$. In the example of Section \ref{sec:Introduction}, we obtain the composition effect with $j=0$ and $k=1$. When $Y_k$ is observed, then we can construct the structure effect or treatment effect on the treated
 \[
-\Delta(\tau) =  Q_{Y{\langle k|k \rangle }}(\tau ) - Q_{Y{\langle j|k \rangle }}(\tau ), \ \tau \in \mathcal{T},  
+\Delta_S(\tau) =  Q_{Y{\langle k|k \rangle }}(\tau ) - Q_{Y{\langle j|k \rangle }}(\tau ), \ \tau \in \mathcal{T},  
 \]
 by specifying the option \rt{group} and setting \rt{treatment=TRUE}. In the example of Section \ref{sec:Introduction}, we obtain the wage structure effect with $j=0$ and $k=1$, i.e. setting \rt{group=1} and \rt{treatment=TRUE}. If in addition we select the option \rt{decomposition=TRUE}, then we obtain the entire decomposition (\ref{eq:decomp}) including the composition, structure and total effects. The total effect is
 \[
-\Delta(\tau) =  Q_{Y{\langle k|k \rangle }}(\tau ) - Q_{Y{\langle j|j \rangle }}(\tau ), \ \tau \in \mathcal{T}.  
+\Delta_T(\tau) =  Q_{Y{\langle k|k \rangle }}(\tau ) - Q_{Y{\langle j|j \rangle }}(\tau ), \ \tau \in \mathcal{T}.  
 \]
 %, and minus the wage structure effect with $j=1$ and $k=0$.
 %Below we will show two leading examples, using quantile regression and distribution regression respectively (and two different methods of generating the counterfactual samples). %Before preceed, let us investigate some of the functionality of the function within \R. The default call to \rt{counterfactual} is
@@ -181,12 +181,12 @@ by the
 plug-in rule, namely $$\hat{F}_{Y\left\langle j|k\right\rangle}(y)=\int_{\mathcal{X}_{k}}\hat{F}_{Y_{j}\vert X_{j}}(y\vert x)d\hat{F}_{X_{k}}(x),
  y\in\mathcal{Y}_{j}.$$ 
 Then, the estimator of the QE function is also obtained by the plug-in rule as
-$$\hat \Delta(\tau) =  \hat{F}_{Y\left\langle j|k\right\rangle}^{\leftarrow}(\tau) - \hat{F}_{Y\left\langle j|j\right\rangle}^{\leftarrow}(\tau), \ \ \tau \in \mathcal{T},$$
+$$\hat \Delta_C(\tau) =  \hat{F}_{Y\left\langle j|k\right\rangle}^{\leftarrow}(\tau) - \hat{F}_{Y\left\langle j|j\right\rangle}^{\leftarrow}(\tau), \ \ \tau \in \mathcal{T},$$
 or
-$$\hat \Delta(\tau) =  \hat{F}_{Y\left\langle k|k\right\rangle}^{\leftarrow}(\tau) - \hat{F}_{Y\left\langle j|k\right\rangle}^{\leftarrow}(\tau), \ \ \tau \in \mathcal{T},$$
+$$\hat \Delta_S(\tau) =  \hat{F}_{Y\left\langle k|k\right\rangle}^{\leftarrow}(\tau) - \hat{F}_{Y\left\langle j|k\right\rangle}^{\leftarrow}(\tau), \ \ \tau \in \mathcal{T},$$
 if we define the counterfactual population with \rt{group} and set \rt{treatment=TRUE}. If in addition to \rt{treatment=TRUE}, we select \rt{decomposition=TRUE}, then the plug-in  estimator of the total effect is
 \[
-\hat \Delta(\tau) =  \hat{F}_{Y\left\langle k|k\right\rangle}^{\leftarrow}(\tau) - \hat{F}_{Y\left\langle j|j\right\rangle}^{\leftarrow}(\tau), \ \ \tau \in \mathcal{T}.  
+\hat \Delta_T(\tau) =  \hat{F}_{Y\left\langle k|k\right\rangle}^{\leftarrow}(\tau) - \hat{F}_{Y\left\langle j|j\right\rangle}^{\leftarrow}(\tau), \ \ \tau \in \mathcal{T}.  
 \]
 %where $\hat{F}_{Y\left\langle j|k\right\rangle}^{r}$ denotes the monotone rearrangement
 %of $\hat{F}_{Y\left\langle j|k\right\rangle}$ 
@@ -487,8 +487,8 @@ rqres <- counterfactual(foodexp~income, counterfactual_var=counter_income,
                         nreg=100, quantiles=taus, transformation = TRUE, 
                         printdeco = FALSE, sepcore = TRUE,ncore=2)
 duqf   <- (rqres$resCE)[,1]
-l.duqf <- (rqres$resCE)[,3]
-u.duqf <- (rqres$resCE)[,4]
+l.duqf <- (rqres$resCE)[,5]
+u.duqf <- (rqres$resCE)[,6]
 @
 
 << label = fig2plot, include = false, eval = true >>=
@@ -521,9 +521,18 @@ We use an extract of the U.S. National Longitudinal Survey of Young Women (NLSW)
 % \footnote{%
 %For the choice of models see \cite{ChernozhukovFernandez-ValMelly2013}.}
 
+%We start by estimating the wage decomposition by logistic distribution regression, where the counterfactual population is specified with \rt{group=union} with the options \rt{treatment=TRUE} and \rt{decomposition=TRUE} to estimate the composition, structure and total effects. The structure effect in this case correspond to the treatment effect of union on the treated or union premium. The tables show that the union workers earn higher wages than the nonumion workers throuoghout the distribution although the union wage gap is decreasing in the quantile index. This gap can be mostly explained by differences in tenure, education and experience between union and nonunion workers in the upper tail of the distribution and by the union premium in the rest of the distribution.
+
 \medskip
 
-We start by estimating the wage decomposition by logistic distribution regression, where the counterfactual population is specified with \rt{group=union} with the options \rt{treatment=TRUE} and \rt{decomposition=TRUE} to estimate the composition, structure and total effects. The structure effect in this case correspond to the treatment effect of union on the treated or union premium. The tables show that the union workers earn higher wages than the nonumion workers throuoghout the distribution although the union wage gap is decreasing in the quantile index. This gap can be mostly explained by differences in tenure, education and experience between union and nonunion workers in the upper tail of the distribution and by the union premium in the rest of the distribution.
+We start by estimating the wage decomposition by logistic distribution regression, where the counterfactual population is specified with \emph{group=union} with the options \emph{treatment=TRUE} and \emph{decomposition=TRUE} to estimate the composition, structure and total effects. The estimates of the total effect  show that the union wage gap is positive throughout the distribution and decreasing in the quantile index. Indeed, we reject the hypothesis that the differences between the deciles of wages between union and nonunion workers are all equal or negative, but cannot reject that they are all positive at conventional significance levels. 
+
+\medskip
+
+In this example the composition effect captures differences in tenure, education and experience between union and nonunion workers, and the structure effect corresponds to the treatment effect of union on the treated or union premium. The estimates of the composition and structure effects show that differences in worker characteristics account for about half of the gap in the upper tail of the distribution, whereas in the rest of the distribution the union premium explains most of the gap. The deciles of the structure effect are all positive and heterogeneous. The deciles of the composition effect are also positive, but we cannot reject that they are constant. All the specification tests for the parametric model report \emph{NA} because these tests are uninformative about the logistic distribution regression model.
+
+
+
 
 %implement the inference with specified \rt{group=union} and there are three covariates from the %reference group. 
 
@@ -538,7 +547,10 @@ logitres <- counterfactual(lwage~tenure+ttl_exp+grade,
 @
 \medskip
 %\paragraph{Plot the simultaneous bands for conditional distribution models}
-Next, we reestimate the QE function on the larger set of quantiles $\{0.01, 0.02, ..., 0.99 \}$, and plot a uniform confidence band over the subset $\{0.10, 0.11, ..., 0.90 \}$) constructed by weighted bootstrap with 100 replications. Figure \ref{fig:union} shows  that the structure effect is heterogeneous across the quantile indexes and explains most of the union wage gap below the third quartile. The composition effect is constant across quantile indexes and explains most of the wage gap above the third quartile. 
+%Next, we reestimate the QE function on the larger set of quantiles $\{0.01, 0.02, ..., 0.99 \}$, and plot a uniform confidence band over the subset $\{0.10, 0.11, ..., 0.90 \}$) constructed by weighted bootstrap with 100 replications. Figure \ref{fig:union} shows  that the structure effect is heterogeneous across the quantile indexes and explains most of the union wage gap below the third quartile. The composition effect is constant across quantile indexes and explains most of the wage gap above the third quartile. 
+
+Next, we reestimate the QE function on the larger set of quantiles $\{0.01, 0.02, ..., 0.99 \}$, and plot a uniform confidence band over the subset $\{0.10, 0.11, ..., 0.90 \}$) constructed by weighted bootstrap with 100 replications. Figure \ref{fig:union} shows  that the findings for the deciles carry over to the percentiles considered. Thus, we can visually test that the structure effect is heterogeneous  and explains most of the union wage gap below the third quartile. The composition effect is homogeneous and explains most of the wage gap above the ninth decile.
+
 
 % we show how to plot the QEs together with the simultaneous confidence bands with \rt{method = "logit"} when more quantiles are estimated:
 
@@ -554,16 +566,16 @@ logitres <- counterfactual(lwage~tenure+ttl_exp+grade,
           sepcore = TRUE,ncore=2)
 
 duqf_SE   <- (logitres$resSE)[,1]
-l.duqf_SE <- (logitres$resSE)[,3]
-u.duqf_SE <- (logitres$resSE)[,4]
+l.duqf_SE <- (logitres$resSE)[,5]
+u.duqf_SE <- (logitres$resSE)[,6]
 
 duqf_CE   <- (logitres$resCE)[,1]
-l.duqf_CE <- (logitres$resCE)[,3]
-u.duqf_CE <- (logitres$resCE)[,4]
+l.duqf_CE <- (logitres$resCE)[,5]
+u.duqf_CE <- (logitres$resCE)[,6]
 
 duqf_TE   <- (logitres$resTE)[,1]
-l.duqf_TE <- (logitres$resTE)[,3]
-u.duqf_TE <- (logitres$resTE)[,4]
+l.duqf_TE <- (logitres$resTE)[,5]
+u.duqf_TE <- (logitres$resTE)[,6]
 
 range_x <- min(c(min(l.duqf_SE[rang]), min(l.duqf_CE[rang]), 
                 min(l.duqf_TE[rang])))
@@ -623,16 +635,16 @@ coxres <- counterfactual(lwage~tenure+ttl_exp+grade,
           printdeco = FALSE, decomposition = TRUE, sepcore = TRUE,ncore=2)
 
 duqf_SE   <- (coxres$resSE)[,1]
-l.duqf_SE <- (coxres$resSE)[,3]
-u.duqf_SE <- (coxres$resSE)[,4]
+l.duqf_SE <- (coxres$resSE)[,5]
+u.duqf_SE <- (coxres$resSE)[,6]
 
 duqf_CE   <- (coxres$resCE)[,1]
-l.duqf_CE <- (coxres$resCE)[,3]
-u.duqf_CE <- (coxres$resCE)[,4]
+l.duqf_CE <- (coxres$resCE)[,5]
+u.duqf_CE <- (coxres$resCE)[,6]
 
 duqf_TE   <- (coxres$resTE)[,1]
-l.duqf_TE <- (coxres$resTE)[,3]
-u.duqf_TE <- (coxres$resTE)[,4]
+l.duqf_TE <- (coxres$resTE)[,5]
+u.duqf_TE <- (coxres$resTE)[,6]
 
 range_x = min(c(min(l.duqf_SE[rang]), min(l.duqf_CE[rang]), 
                 min(l.duqf_TE[rang])))
@@ -673,10 +685,13 @@ abline(h = 0, lty = 2)
 <<fig4plot>>
 @
 \end{center}
-\caption{Wage decomposition with respect to union: duration regression estimates}\label{fig:union2}
+\caption{Wage decomposition with respect to union: duration regression estimates, unweighted-uniform}\label{fig:union2}
 \end{figure}
 
  
+
+\section{Acknowledgments}
+We wish to thank Lorenz Thomschke and an anonymous referee for insightful comments.  We gratefully acknowledge research support from the NSF.
 
 %\newpage
 

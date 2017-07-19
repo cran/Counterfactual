@@ -1,7 +1,7 @@
 Package: Counterfactual
 Type: Package
 Title: Estimation and Inference Methods for Counterfactual Analysis
-Version: 1.0
+Version: 1.1
 Author: Mingli Chen, Victor Chernozhukov, Ivan Fernandez-Val, Blaise Melly
 Maintainer: Ivan Fernandez-Val <ivanf@bu.edu>
 Description: Implements the estimation and inference methods for counterfactual analysis described in Chernozhukov, Fernandez-Val and Melly (2013) <DOI:10.3982/ECTA10582> "Inference on Counterfactual Distributions," Econometrica, 81(6). The counterfactual distributions considered are the result of changing either the marginal distribution of covariates related to the outcome variable of interest, or the conditional distribution of the outcome given the covariates. They can be applied to estimate quantile treatment effects and wage decompositions.
@@ -10,6 +10,6 @@ LazyLoad: yes
 Depends: quantreg
 Imports: survival, Hmisc, foreach, doRNG, doParallel, parallel
 NeedsCompilation: no
-Packaged: 2016-09-20 02:27:32 UTC; m.chen.3
+Packaged: 2017-07-19 15:23:38 UTC; m.chen.3
 Repository: CRAN
-Date/Publication: 2016-09-21 01:25:22
+Date/Publication: 2017-07-19 16:00:24 UTC
