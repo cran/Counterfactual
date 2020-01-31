@@ -35,8 +35,8 @@ library(Counterfactual)
 ###################################################
 ## counterfactual(formula, data, weights, na.action = na.exclude, 
 ##                group, treatment = FALSE, decomposition = FALSE,
-##                counterfactual_var, transformation = FALSE,
-##                quantiles = c(1:9)/10, method = "qr",
+##                transformation = FALSE, counterfactual_var, 
+##                quantiles, method = "qr", 
 ##                trimming = 0.005, nreg = 100, scale_variable, 
 ##                counterfactual_scale_variable, 
 ##                censoring = 0, right = FALSE, nsteps = 3, 
@@ -97,8 +97,8 @@ rqres <- counterfactual(foodexp~income, counterfactual_var=counter_income,
                         nreg=100, quantiles=taus, transformation = TRUE, 
                         printdeco = FALSE, sepcore = TRUE,ncore=2)
 duqf   <- (rqres$resCE)[,1]
-l.duqf <- (rqres$resCE)[,5]
-u.duqf <- (rqres$resCE)[,6]
+l.duqf <- (rqres$resCE)[,3]
+u.duqf <- (rqres$resCE)[,4]
 
 
 ###################################################
@@ -130,7 +130,7 @@ legend(0, -90, "QE", cex = 0.75, lty = 1, bty = "n", lwd = 1)
 
 
 ###################################################
-### code chunk number 13: vignette.Rnw:539-546
+### code chunk number 13: vignette.Rnw:530-537
 ###################################################
 data(nlsw88)
 attach(nlsw88)
@@ -142,7 +142,7 @@ logitres <- counterfactual(lwage~tenure+ttl_exp+grade,
 
 
 ###################################################
-### code chunk number 14: vignette.Rnw:557-583
+### code chunk number 14: vignette.Rnw:545-571
 ###################################################
 taus  <- c(1:99)/100
 first <- sum(as.double(taus <= .10))
@@ -155,16 +155,16 @@ logitres <- counterfactual(lwage~tenure+ttl_exp+grade,
           sepcore = TRUE,ncore=2)
 
 duqf_SE   <- (logitres$resSE)[,1]
-l.duqf_SE <- (logitres$resSE)[,5]
-u.duqf_SE <- (logitres$resSE)[,6]
+l.duqf_SE <- (logitres$resSE)[,3]
+u.duqf_SE <- (logitres$resSE)[,4]
 
 duqf_CE   <- (logitres$resCE)[,1]
-l.duqf_CE <- (logitres$resCE)[,5]
-u.duqf_CE <- (logitres$resCE)[,6]
+l.duqf_CE <- (logitres$resCE)[,3]
+u.duqf_CE <- (logitres$resCE)[,4]
 
 duqf_TE   <- (logitres$resTE)[,1]
-l.duqf_TE <- (logitres$resTE)[,5]
-u.duqf_TE <- (logitres$resTE)[,6]
+l.duqf_TE <- (logitres$resTE)[,3]
+u.duqf_TE <- (logitres$resTE)[,4]
 
 range_x <- min(c(min(l.duqf_SE[rang]), min(l.duqf_CE[rang]), 
                 min(l.duqf_TE[rang])))
@@ -235,7 +235,7 @@ abline(h = 0, lty = 2)
 
 
 ###################################################
-### code chunk number 17: vignette.Rnw:631-652
+### code chunk number 17: vignette.Rnw:619-640
 ###################################################
 coxres <- counterfactual(lwage~tenure+ttl_exp+grade, 
           group = union, treatment=TRUE, quantiles=taus,  
@@ -243,16 +243,16 @@ coxres <- counterfactual(lwage~tenure+ttl_exp+grade,
           printdeco = FALSE, decomposition = TRUE, sepcore = TRUE,ncore=2)
 
 duqf_SE   <- (coxres$resSE)[,1]
-l.duqf_SE <- (coxres$resSE)[,5]
-u.duqf_SE <- (coxres$resSE)[,6]
+l.duqf_SE <- (coxres$resSE)[,3]
+u.duqf_SE <- (coxres$resSE)[,4]
 
 duqf_CE   <- (coxres$resCE)[,1]
-l.duqf_CE <- (coxres$resCE)[,5]
-u.duqf_CE <- (coxres$resCE)[,6]
+l.duqf_CE <- (coxres$resCE)[,3]
+u.duqf_CE <- (coxres$resCE)[,4]
 
 duqf_TE   <- (coxres$resTE)[,1]
-l.duqf_TE <- (coxres$resTE)[,5]
-u.duqf_TE <- (coxres$resTE)[,6]
+l.duqf_TE <- (coxres$resTE)[,3]
+u.duqf_TE <- (coxres$resTE)[,4]
 
 range_x = min(c(min(l.duqf_SE[rang]), min(l.duqf_CE[rang]), 
                 min(l.duqf_TE[rang])))

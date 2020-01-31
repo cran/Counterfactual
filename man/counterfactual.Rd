@@ -5,8 +5,6 @@
 \alias{InferenceTestingEval}
 \alias{TestingEval}
 \alias{VarianceEval}
-\alias{getquantile}
-\alias{DiscreteInference}
 
 \title{
 Estimation and Inference Methods for Counterfactual Analysis
@@ -67,7 +65,7 @@ selects the values of X in the counterfactual population (only useful when \code
   \item{method}{
  selects the model to be used to estimate the conditional distribution. The following methods have been implemented:  
  \code{qr} (quantile regression, the default), \code{loc} (location shift), \code{locsca} (location scale shift), \code{cqr} (censored quantile regression), \code{cox} (duration regression), \code{logit} (logit distribution regression), \code{probit} (probit distribution regression), and \code{lpm} (linear probability model).
-}
+} 
 \item{trimming}{
  value between 0 and 0.5 specifying the amount of trimming to avoid tail estimation in \code{qr} method; default is 0.005.
  }
@@ -131,6 +129,7 @@ adds tests of the null hypothesis that the QEs = \code{cons_test} at all the spe
   \item{ncore}{
  number of cores used for parallel computing (only useful when \code{sepcore=TRUE}).
 }
+ 
 }
 \details{ 
 The populations to construct the observed and counterfactual distributions can be specified in two alternative ways. If the option \code{group} is specified and \code{treatment=FALSE}, then the observed distribution is estimated from the conditional and covariate distributions of \code{group=0}, and the counterfactual distribution is estimated from the conditional distribution of \code{group=0} and the covariate distribution of \code{group=1}. If \code{group} is specified and \code{treatment=TRUE}, then the observed distribution is estimated from the conditional and covariate distributions of \code{group=1}, and the counterfactual distribution is estimated from the conditional distribution of \code{group=0} and the covariate distribution of \code{group=1}. If \code{group} is specified, \code{treatment=TRUE} and \code{decomposition=TRUE}, then all the previous observed and counterfactual distributions are estimated. Alternatively, the option \code{counterfactual_var} can be specified. In this case, the variables specified in the right hand side of \code{formula} contain the covariate values used to estimate the observed distribution and the variables specified in \code{counterfactual_var} contain the covariate values to estimate the counterfactual distribution. Note that \code{counterfactual_var} must contain exactly the same number of variables as in the right hand side of \code{formula} and that the order matters. In addition, if \code{counterfactual_var} is a deterministic transformation of the covariates in the reference  population, then \code{transformation} should be set to \code{TRUE}.
@@ -180,8 +179,6 @@ Return a list of results
 
 \item{nreg}{number of regressions estimated to approximate the conditional distribution.}
 
-\item{marginal_counterfactual}{a vector with the point estimates for the quantiles of Y in the counterfactual distribution estimated using the conditional model at the quantile indexes specified with \code{quantiles}.}
-
 \item{resSE}{a matrix with 6 columns. The columns contain the point estimates, standard errors, pointwise lower end of confidence band, pointwise upper end of confidence band, uniform lower end of confidence band, and uniform upper end of confidence band for the structure or treatment quantile effect at the quantile indexes specified with \code{quantiles}. This matrix is reported when \code{group} is specified and \code{treatment=TRUE}.}
 
 \item{testSE}{a matrix with 2 columns including the p-values based on the KS and CMS statistics for several functional hypotheses on the structure or treatment effect.  The first row tests the null-hypothesis of correct specification of the conditional model. The second row tests the null
@@ -208,7 +205,8 @@ Chen, M., Chernozhukov, V., I. Fernandez-Val, and B. Melly (2016). Counterfactua
 
 Chernozhukov, V., I. Fernandez-Val, and B. Melly (2013). Inference on Counterfactual Distributions. Econometrica 81(6), 2205-2268.
 
-Chernozhukov, V., and H. Hong (2002). Three-step Censored Quantile Regression and Extramarital Affairs. Journal of the American Statistical Association, 97, 872-881.
+Chernozhukov, V., and H. Hong (2002). Three-step Censored Quantile Regression and Extramarital Affairs.Journal of the American Statistical
+        Association, 97, 872-881.
         
 Cox, D. R. (1972). Regression Models and Life Tables. Journal of the Royal Statistical Society, Ser. B, 34, 187-220.
 
